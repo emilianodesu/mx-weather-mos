@@ -1,5 +1,7 @@
-# MX Weather Intel — Forecast Verification & ML Bias-Correction Platform
+# MX Weather MOS — Forecast Verification & ML Bias-Correction Platform
 
+[![CI](https://github.com/emilianodesu/mx-weather-mos/actions/workflows/ci.yml/badge.svg)](https://github.com/emilianodesu/mx-weather-mos/actions/workflows/ci.yml)
+[![GitHub Pages](https://img.shields.io/badge/Live_Case_Study-GitHub_Pages-0B2545?logo=githubpages&logoColor=white)](https://emilianodesu.github.io/mx-weather-mos/)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-PostGIS_3.4-4169E1?logo=postgresql&logoColor=white)
 ![LightGBM](https://img.shields.io/badge/LightGBM-MOS_Quantile_+_Isotonic-2E7D32)
@@ -7,6 +9,8 @@
 ![React](https://img.shields.io/badge/React_18-TypeScript_+_Tailwind-61DAFB?logo=react&logoColor=black)
 ![Docker](https://img.shields.io/badge/Docker_Compose-100%25_Local-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
+
+> **Live Project Case Study & Interactive Documentation:** [emilianodesu.github.io/mx-weather-mos](https://emilianodesu.github.io/mx-weather-mos/)
 
 A **100% local, Docker-reproducible operational weather data & ML post-processing platform** for Mexico — combining revision-aware forecast ingestion into **PostgreSQL 16 + PostGIS** (`32` states, `2,463` official municipalities), **Model Output Statistics (MOS)** temperature bias correction & precipitation probability calibration with **LightGBM + Isotonic Regression** (enforcing zero temporal leakage), a typed **FastAPI** serving/export layer, and a **WCAG 2.1 AAA responsive web portal** adapted from a Google UX Design System.
 

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MX Weather MOS — Forecast Verification &amp; ML Bias-Correction Platform</title>
+  <meta
+    name="description"
+    content="100% local Docker-reproducible operational weather data &amp; ML post-processing platform for Mexico using PostgreSQL 16 + PostGIS, LightGBM MOS + Isotonic Calibration, FastAPI, and a WCAG 2.1 AAA React UI."
+  />
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --surface: #121826;
+      --surface-2: #182032;
+      --border: #253047;
+      --text: #e6edf7;
+      --muted: #9aa7bd;
+      --accent: #38bdf8;
+      --accent-2: #34d399;
+      --amber: #fbbf24;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: radial-gradient(circle at top right, #132038 0%, var(--bg) 42%);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    header.nav {
+      position: sticky; top: 0; z-index: 20;
+      backdrop-filter: blur(12px);
+      background: rgba(11, 15, 23, 0.88);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px; gap: 16px;
+    }
+    .brand { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .nav-links { display: flex; gap: 18px; font-size: 0.9rem; flex-wrap: wrap; }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); }
+    .hero { padding: 64px 0 40px; border-bottom: 1px solid var(--border); }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .badge {
+      font-family: var(--mono); font-size: 0.78rem; padding: 4px 10px;
+      border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--accent);
+    }
+    .badge.green { color: var(--accent-2); }
+    .badge.amber { color: var(--amber); }
+    h1 { font-size: clamp(1.9rem, 4vw, 2.85rem); line-height: 1.15; margin: 0 0 16px; letter-spacing: -0.02em; }
+    .lead { font-size: 1.08rem; color: var(--muted); max-width: 820px; margin: 0 0 28px; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.92rem;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    }
+    .btn.primary { background: #0b2545; border-color: #38bdf8; color: #ffffff; }
+    .btn:hover { text-decoration: none; filter: brightness(1.12); }
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px; margin-top: 34px;
+    }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px;
+    }
+    .kpi-val { font-family: var(--mono); font-size: 1.45rem; font-weight: 700; color: var(--accent-2); }
+    .kpi-lbl { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+    section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+    h2 { font-size: 1.55rem; margin: 0 0 12px; letter-spacing: -0.01em; }
+    h3 { font-size: 1.1rem; margin: 0 0 8px; color: var(--text); }
+    .sub { color: var(--muted); margin: 0 0 24px; max-width: 800px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+    }
+    .card p { color: var(--muted); font-size: 0.92rem; margin: 0; }
+    table {
+      width: 100%; border-collapse: collapse; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+      font-size: 0.9rem;
+    }
+    th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--surface-2); color: var(--text); font-weight: 600; }
+    td.num, th.num { text-align: right; font-family: var(--mono); }
+    td.good { color: var(--accent-2); font-weight: 700; font-family: var(--mono); text-align: right; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+    figure {
+      margin: 0; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    figure img { width: 100%; height: auto; display: block; border-bottom: 1px solid var(--border); }
+    figcaption { padding: 12px 16px; font-size: 0.86rem; color: var(--muted); }
+    pre {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px; overflow-x: auto;
+      font-family: var(--mono); font-size: 0.84rem; color: #dbeafe;
+    }
+    footer { padding: 36px 0 48px; color: var(--muted); font-size: 0.86rem; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <div class="brand">MX Weather MOS</div>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#architecture">Architecture</a>
+        <a href="#benchmarks">ML Benchmarks</a>
+        <a href="#ui">UI Preview</a>
+        <a href="#quickstart">Quickstart</a>
+        <a href="https://github.com/emilianodesu/mx-weather-mos" target="_blank" rel="noreferrer">GitHub Repo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="badge-row">
+        <span class="badge">PostgreSQL 16 + PostGIS</span>
+        <span class="badge green">LightGBM MOS + Isotonic</span>
+        <span class="badge">FastAPI + PyArrow</span>
+        <span class="badge amber">WCAG 2.1 AAA React UI</span>
+        <span class="badge">Docker Compose 100% Local</span>
+      </div>
+      <h1>Mexico Weather Forecast Verification &amp; ML Bias-Correction Platform</h1>
+      <p class="lead">
+        A production-style, single-workstation Data Engineering &amp; AI/ML platform spanning <strong>32 Mexican states (2,463 official municipalities)</strong> — combining revision-aware forecast ingestion, PostGIS spatial search, zero-leakage point-in-time LightGBM quantile post-processing, SHA-256 verified CSV/Parquet exports, and an accessible GoogleUX web portal.
+      </p>
+      <div class="cta-row">
+        <a class="btn primary" href="https://github.com/emilianodesu/mx-weather-mos" target="_blank" rel="noreferrer">View Source on GitHub</a>
+        <a class="btn" href="https://github.com/emilianodesu/mx-weather-mos/blob/main/docs/verification/execution-log.md" target="_blank" rel="noreferrer">Empirical Execution Log</a>
+        <a class="btn" href="https://github.com/emilianodesu/mx-weather-mos/blob/main/docs/architecture/overview.md" target="_blank" rel="noreferrer">Architecture &amp; ADRs</a>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-val">-16.8% / -30.7%</div>
+          <div class="kpi-lbl">Tmax MAE &amp; RMSE reduction vs. Raw NWP (n = 3,410 holdout)</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val">-77.2% / -85.2%</div>
+          <div class="kpi-lbl">Rain Brier Score &amp; ECE reduction via Isotonic Calibration</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val">71 / 71 PASS</div>
+          <div class="kpi-lbl">67 Python + Docker E2E + Zero-Leakage tests &amp; 4 Vitest UI tests</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-val">96.88% (31/32)</div>
+          <div class="kpi-lbl">Q08 ML cohort completeness across Mexican state capitals</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>Engineering Architecture</h2>
+      <p class="sub">
+        Designed to complement batch lakehouse workloads with operational relational/geospatial engineering, fault-tolerant API ingestion, strict point-in-time ML controls, and typed web serving.
+      </p>
+      <div class="cards">
+        <div class="card">
+          <h3>Dual-Source Resilient Ingestion</h3>
+          <p>Open-Meteo (ERA5-Land + Historical/Live Forecast, CC BY 4.0) acts as the reliable primary feed, while the CONAGUA SMN GZip adapter handles upstream HTTP 500/timeouts with a graceful <code>DEGRADED_UPSTREAM</code> circuit breaker and offline golden-fixture tests.</p>
+        </div>
+        <div class="card">
+          <h3>Revision-Aware PostGIS Schema</h3>
+          <p>Composite PK <code>(source_provider, state_id, municipality_id, issued_at, valid_date)</code> preserves forecast revisions, enforces <code>valid_date &gt;= issued_at::date</code> via DB <code>CHECK</code> constraints, and indexes 2,463 municipalities with PostGIS <code>GEOGRAPHY(POINT, 4326)</code> GiST.</p>
+        </div>
+        <div class="card">
+          <h3>Zero-Leakage MOS &amp; Calibration</h3>
+          <p>Strictly lagged station-bias features verified by an automated <strong>future-perturbation test</strong> (+999.0 target mutation asserts bit-for-bit identical features). LightGBM <code>p10/p50/p90</code> quantile models + Isotonic rain calibration stored in a local SHA-256 registry.</p>
+        </div>
+        <div class="card">
+          <h3>Typed API &amp; WCAG 2.1 AAA UI</h3>
+          <p>FastAPI serves PostGIS radius queries, Raw vs. ML forecasts, skill metrics, and SHA-256 verified CSV/Parquet streams (<code>p50 = 1.0–29.8 ms</code>) to a responsive React + Leaflet + Recharts UI with Web Speech API audio summaries.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="benchmarks">
+      <h2>Verified Real-Data ML Holdout Benchmarks</h2>
+      <p class="sub">
+        Model <code>mos_lgbm_20261119T014120Z</code> evaluated on strictly held-out temporal test data (<strong>n = 3,410 municipality-days</strong> across 31 Mexican state capitals, <code>2024-11-14</code> to <code>2026-11-14</code>).
+      </p>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="num">Raw NWP</th>
+              <th class="num">Persistence (t-1)</th>
+              <th class="num">30d Climatology</th>
+              <th class="num">LightGBM MOS + Isotonic</th>
+              <th class="num">Delta vs. Raw NWP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>tmax MAE (°C)</strong></td><td class="num">0.422</td><td class="num">1.575</td><td class="num">1.733</td><td class="good">0.351</td><td class="good">-16.8%</td></tr>
+            <tr><td><strong>tmax RMSE (°C)</strong></td><td class="num">0.913</td><td class="num">2.176</td><td class="num">2.401</td><td class="good">0.633</td><td class="good">-30.7%</td></tr>
+            <tr><td><strong>tmax Bias (°C)</strong></td><td class="num">+0.300</td><td class="num">+0.106</td><td class="num">+0.570</td><td class="good">+0.012</td><td class="good">Bias eliminated</td></tr>
+            <tr><td><strong>tmax 80% Coverage</strong></td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="good">79.7%</td><td class="num">Target 80.0%</td></tr>
+            <tr><td><strong>tmin MAE (°C)</strong></td><td class="num">0.348</td><td class="num">1.177</td><td class="num">1.168</td><td class="good">0.343</td><td class="good">-1.3%</td></tr>
+            <tr><td><strong>tmin RMSE (°C)</strong></td><td class="num">0.673</td><td class="num">1.625</td><td class="num">1.700</td><td class="good">0.570</td><td class="good">-15.3%</td></tr>
+            <tr><td><strong>tmin 80% Coverage</strong></td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="good">77.2%</td><td class="num">Target 80.0%</td></tr>
+            <tr><td><strong>Rain (&gt;=1mm) Brier Score</strong></td><td class="num">0.1453</td><td class="num">0.3616</td><td class="num">0.2238</td><td class="good">0.0331</td><td class="good">-77.2%</td></tr>
+            <tr><td><strong>Rain (&gt;=1mm) ECE (10 bins)</strong></td><td class="num">0.0762</td><td class="num">0.3616</td><td class="num">0.0585</td><td class="good">0.0113</td><td class="good">-85.2%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ui">
+      <h2>Live Verified UI Preview (WCAG 2.1 AAA)</h2>
+      <p class="sub">
+        Adapted from a Google UX Design System (Deep Navy <code>#0B2545</code>, Amber P0 <code>#FFFBEB</code>/<code>#D97706</code>, 48×48px touch targets, semantic landmarks) with explicit scope honesty — alerts reflect meteorological forecast thresholds only, never fabricated street sensors.
+      </p>
+      <div class="gallery">
+        <figure>
+          <img src="assets/portal-home-desktop.png" alt="Portal Home Desktop showing Amber P0 alert card and 4-day Raw vs ML forecast cards" />
+          <figcaption><strong>Portal Home (1440px):</strong> Active forecast-threshold alert card with Web Speech audio summary, 32-capital selector, and 4-day Raw vs. ML-Calibrated cards.</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/forecast-map-desktop.png" alt="Interactive Leaflet Geospatial Map of 32 Mexican state capitals" />
+          <figcaption><strong>Geospatial Forecast Map:</strong> PostGIS-backed Leaflet map with ML Bias Delta (°C) layer and live Municipality Inspector.</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/explorer-trends-desktop.png" alt="Researcher Explorer showing ERA5 Observed vs Raw NWP vs ML MOS time series" />
+          <figcaption><strong>Researcher Explorer:</strong> ERA5 Observed vs. Raw NWP vs. ML MOS time-series comparison with one-click SHA-256 verified CSV/Parquet export.</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/explorer-ml-skill-desktop.png" alt="Walk-forward ML skill table and isotonic rain calibration reliability diagram" />
+          <figcaption><strong>ML Verification &amp; Calibration:</strong> Baseline skill comparison table and 10-bin isotonic rain reliability diagram.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="quickstart">
+      <h2>100% Local Docker Quickstart</h2>
+      <pre>git clone https://github.com/emilianodesu/mx-weather-mos.git
+cd mx-weather-mos
+
+# 1. Start PostGIS, run Alembic migrations, and seed 32 states / 2,463 municipalities
+docker compose up -d postgres
+docker compose run --rm pipeline alembic upgrade head
+docker compose run --rm pipeline python scripts/seed_catalog.py
+
+# 2. Backfill historical paired data, ingest live forecasts, train &amp; score LightGBM MOS
+docker compose run --rm pipeline python scripts/run_backfill.py --months 24 --skip-existing --delay 2.0
+docker compose run --rm pipeline python scripts/run_daily_ingest.py
+docker compose run --rm pipeline python scripts/train_models.py
+docker compose run --rm pipeline python scripts/score_forecasts.py
+
+# 3. Launch FastAPI (http://127.0.0.1:8000/docs) and Web UI (http://127.0.0.1:5173)
+docker compose up -d --build</pre>
+    </section>
+  </main>
+
+  <footer class="container">
+    <p>
+      Built by Carlos Emiliano Mendoza Hernández · Licensed under MIT · Open-Meteo data subject to CC BY 4.0 (non-commercial).
+      Alerts are derived strictly from verifiable municipal meteorological forecast thresholds; street-level flood sensors and live Doppler radar are explicitly out of scope.
+    </p>
+  </footer>
+</body>
+</html>
