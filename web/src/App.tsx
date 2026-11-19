@@ -1,9 +1,11 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { PortalHomePage } from './pages/PortalHomePage';
 import { ForecastMapPage } from './pages/ForecastMapPage';
 import { ExplorerPage } from './pages/ExplorerPage';
 import { ExportReceiptPage } from './pages/ExportReceiptPage';
+
+const IS_DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 export function AppRoutes() {
   return (
@@ -20,9 +22,10 @@ export function AppRoutes() {
 }
 
 export default function App() {
+  const Router = IS_DEMO_MODE ? HashRouter : BrowserRouter;
   return (
-    <BrowserRouter>
+    <Router>
       <AppRoutes />
-    </BrowserRouter>
+    </Router>
   );
 }

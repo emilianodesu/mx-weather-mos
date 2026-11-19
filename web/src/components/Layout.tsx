@@ -26,6 +26,34 @@ export function Layout({ children }: LayoutProps) {
       </a>
 
       <header className="bg-navy text-white shadow-sm sticky top-0 z-40">
+        {import.meta.env.VITE_DEMO_MODE === 'true' && (
+          <div className="bg-slate-900 border-b border-white/15 text-[13px] text-slate-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex flex-wrap items-center justify-between gap-2">
+              <span>
+                <strong>Interactive Snapshot Mode (2026-11-19):</strong> Real PostgreSQL/PostGIS &amp;
+                LightGBM MOS outputs exported for GitHub Pages. Run{' '}
+                <code className="font-mono text-white">docker compose up --build</code> locally for
+                live API ingestion.
+              </span>
+              <span className="flex items-center gap-4 font-semibold">
+                <a
+                  href={`${import.meta.env.BASE_URL}case-study.html`}
+                  className="text-sky-300 hover:text-white underline"
+                >
+                  Architecture &amp; Benchmarks
+                </a>
+                <a
+                  href="https://github.com/emilianodesu/mx-weather-mos"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sky-300 hover:text-white underline"
+                >
+                  GitHub Repo
+                </a>
+              </span>
+            </div>
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between min-h-[68px] py-2 gap-4">
             <Link

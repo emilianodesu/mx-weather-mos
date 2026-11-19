@@ -15,8 +15,67 @@ import type {
 } from '../types/api';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+const IS_DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
+const DEMO_BASE = `${import.meta.env.BASE_URL}demo-data`;
+
+const demoCache = new Map<string, Promise<unknown>>();
+
+async function fetchDemoJson<T>(filename: string): Promise<T> {
+  if (!demoCache.has(filename)) {
+    demoCache.set(
+      filename,
+      fetch(`${DEMO_BASE}/${filename}`, { headers: { Accept: 'application/json' } }).then(
+        async (res) => {
+          if (!res.ok) throw new Error(`Snapshot ${res.status}: ${filename}`);
+          return res.json();
+        },
+      ),
+    );
+  }
+  return (await demoCache.get(filename)) as T;
+}
+
+async function computeSha256Hex(bytes: Uint8Array): Promise<string> {
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const buf = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+  return 'sha256-requires-secure-context';
+}
 
 async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  if (IS_DEMO_MODE) {
+    if (path === '/health') return fetchDemoJson<T>('health.json');
+    if (path.startsWith('/v1/municipalities')) return fetchDemoJson<T>('municipalities.json');
+    if (path === '/v1/alerts') return fetchDemoJson<T>('alerts.json');
+    if (path === '/v1/forecasts/map') return fetchDemoJson<T>('map.json');
+    if (path === '/v1/ml/skill') return fetchDemoJson<T>('ml_skill.json');
+    const fcstMatch = /^\/v1\/forecasts\/(\d+)\/(\d+)/.exec(path);
+    if (fcstMatch) {
+      const all = await fetchDemoJson<Record<string, T>>('forecasts.json');
+      const hit = all[`${fcstMatch[1]}-${fcstMatch[2]}`];
+      if (!hit) throw new Error(`Forecast not found in snapshot for ${fcstMatch[1]}-${fcstMatch[2]}`);
+      return hit;
+    }
+    const trendMatch = /^\/v1\/trends\/(\d+)\/(\d+)/.exec(path);
+    if (trendMatch) {
+      const all = await fetchDemoJson<Record<string, Record<string, unknown>>>('trends.json');
+      const hit = all[`${trendMatch[1]}-${trendMatch[2]}`];
+      if (!hit) throw new Error(`Trends not found in snapshot for ${trendMatch[1]}-${trendMatch[2]}`);
+      const qs = path.includes('?') ? new URLSearchParams(path.split('?')[1]) : null;
+      const start = qs?.get('start_date') || '';
+      const end = qs?.get('end_date') || '';
+      if ((start || end) && Array.isArray(hit.series)) {
+        const filtered = (hit.series as Array<{ date: string }>).filter(
+          (row) => (!start || row.date >= start) && (!end || row.date <= end),
+        );
+        return { ...hit, series: filtered, count: filtered.length } as T;
+      }
+      return hit as T;
+    }
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { Accept: 'application/json' },
     signal,
@@ -374,6 +433,68 @@ export async function downloadVerifiedExport(params: {
   if (params.start_date) qs.set('start_date', params.start_date);
   if (params.end_date) qs.set('end_date', params.end_date);
   qs.set('format', params.format);
+
+  if (IS_DEMO_MODE) {
+    const allTrends = await fetchDemoJson<Record<string, { series?: TrendPoint[] }>>('trends.json');
+    const key = `${params.state_id ?? 1}-${params.municipality_id ?? 1}`;
+    const rawSeries = allTrends[key]?.series ?? [];
+    const filtered = rawSeries.filter(
+      (pt) =>
+        (!params.start_date || pt.date >= params.start_date) &&
+        (!params.end_date || pt.date <= params.end_date),
+    );
+    const header = 'date,obs_tmax_c,obs_tmin_c,obs_precip_mm,raw_tmax_c,raw_tmin_c,ml_tmax_p50,ml_tmin_p50';
+    const lines = [
+      header,
+      ...filtered.map((pt) =>
+        [
+          pt.date,
+          pt.obs_tmax_c ?? '',
+          pt.obs_tmin_c ?? '',
+          pt.obs_precip_mm ?? '',
+          pt.raw_tmax_c ?? '',
+          pt.raw_tmin_c ?? '',
+          pt.ml_tmax_p50 ?? '',
+          pt.ml_tmin_p50 ?? '',
+        ].join(','),
+      ),
+    ];
+    const csvText = `${lines.join('\n')}\n`;
+    const bytes = new TextEncoder().encode(csvText);
+    const sha256 = await computeSha256Hex(bytes);
+    const filename = `mxweather_state${String(params.state_id ?? 1).padStart(2, '0')}_mun${String(params.municipality_id ?? 1).padStart(3, '0')}_snapshot.csv`;
+    const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8' });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(objectUrl);
+
+    const receipt: ExportReceipt = {
+      filename,
+      format: 'csv',
+      rowCount: filtered.length,
+      sha256,
+      downloadedAt: new Date().toISOString(),
+      municipalityLabel: params.municipalityLabel,
+      dateRange:
+        params.start_date || params.end_date
+          ? `${params.start_date || 'Earliest'} → ${params.end_date || 'Latest'}`
+          : 'All available dates',
+      sourceProvenance:
+        'Verified Static Snapshot (2026-11-19) from Open-Meteo ERA5 + NWP + LightGBM MOS (run Docker locally for Parquet)',
+      modelVersion: 'mos_lgbm_20261119T014120Z',
+    };
+    try {
+      sessionStorage.setItem('mxweather_last_export_receipt', JSON.stringify(receipt));
+    } catch {
+      // Ignore storage quota errors
+    }
+    return receipt;
+  }
 
   const res = await fetch(`${API_BASE}/v1/export?${qs.toString()}`);
   if (!res.ok) {
