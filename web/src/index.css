@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  /* High-visibility WCAG 2.1 AAA focus ring */
+  :focus-visible {
+    outline: 3px solid #0B2545;
+    outline-offset: 2px;
+  }
+}
+
+/* Ensure Leaflet map containers stay beneath sticky headers and drawers */
+.leaflet-container {
+  z-index: 10;
+  font-family: 'Inter', system-ui, sans-serif;
+}

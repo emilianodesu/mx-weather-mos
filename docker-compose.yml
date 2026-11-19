@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: mxweather_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mxweather}
+      POSTGRES_USER: ${POSTGRES_USER:-mxweather}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mxweather_local_dev}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mxweather} -d ${POSTGRES_DB:-mxweather}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: mxweather_pipeline
+    env_file:
+      - .env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mxweather}:${POSTGRES_PASSWORD:-mxweather_local_dev}@postgres:5432/${POSTGRES_DB:-mxweather}
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+      - ./fixtures:/app/fixtures:ro
+      - ./contracts:/app/contracts:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: mxweather_api
+    command: ["uvicorn", "mxweather.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    env_file:
+      - .env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mxweather}:${POSTGRES_PASSWORD:-mxweather_local_dev}@postgres:5432/${POSTGRES_DB:-mxweather}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+      - ./contracts:/app/contracts:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: mxweather_web
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pg_data:

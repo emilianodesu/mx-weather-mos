@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Environment & Secrets
+.env
+!.env.example
+
+# Runtime data & generated model binaries
+data/raw/
+artifacts/models/
+*.joblib
+
+# Node / Frontend
+web/node_modules/
+web/dist/
+web/.vite/
+
+# OS / Editors
+.DS_Store
+*.log

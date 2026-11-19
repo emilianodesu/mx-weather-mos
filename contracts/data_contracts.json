@@ -1,0 +1,88 @@
+{
+  "contract_version": "1.0.0",
+  "project": "mx-weather-intel",
+  "structural_rules": [
+    {
+      "id": "S01",
+      "name": "payload_integrity",
+      "description": "Raw payload is valid UTF-8 JSON (or valid GZip-compressed JSON for CONAGUA SMN) and SHA-256 digest is recorded."
+    },
+    {
+      "id": "S02",
+      "name": "required_fields_present",
+      "description": "All required identifiers and core meteorological fields (state_id, municipality_id, valid_date, tmax_c, tmin_c) are present."
+    },
+    {
+      "id": "S03",
+      "name": "municipality_fk_exists",
+      "description": "Every (state_id, municipality_id) resolves to an active row in dim_municipality."
+    },
+    {
+      "id": "S04",
+      "name": "mexico_coordinate_bounds",
+      "description": "Coordinates fall within valid Mexican territory bounds: 14.0 <= lat <= 33.0 and -119.0 <= lon <= -86.0."
+    },
+    {
+      "id": "S05",
+      "name": "timestamp_and_date_validity",
+      "description": "issued_at is timezone-aware UTC TIMESTAMPTZ and valid_date / obs_date is a valid ISO-8601 DATE."
+    },
+    {
+      "id": "S06",
+      "name": "lead_day_domain",
+      "description": "lead_day is a non-negative integer (0..7) consistent with valid_date - issued_at::date."
+    },
+    {
+      "id": "S07",
+      "name": "numeric_type_strictness",
+      "description": "No NaN, Infinity, or unparseable string values in numeric measurements; nulls are explicit and never silently coerced to 0."
+    },
+    {
+      "id": "S08",
+      "name": "source_provider_enum",
+      "description": "source_provider belongs to {'open_meteo_forecast', 'open_meteo_historical_forecast', 'open_meteo_era5', 'conagua_smn'}."
+    }
+  ],
+  "quality_rules": [
+    {
+      "id": "Q01",
+      "name": "temperature_ordering",
+      "description": "tmax_c >= tmin_c for every daily forecast and observation row."
+    },
+    {
+      "id": "Q02",
+      "name": "physical_temperature_bounds",
+      "description": "tmax_c and tmin_c fall within [-25.0, 55.0] degrees Celsius."
+    },
+    {
+      "id": "Q03",
+      "name": "precipitation_nonnegative",
+      "description": "precip_mm >= 0.0 and <= 600.0 mm/day."
+    },
+    {
+      "id": "Q04",
+      "name": "precipitation_probability_range",
+      "description": "precip_prob_pct is NULL or within [0, 100]."
+    },
+    {
+      "id": "Q05",
+      "name": "wind_nonnegative_and_gust_consistency",
+      "description": "wind_speed_kmh >= 0 and wind_gust_kmh >= 0; flag warning if wind_gust_kmh < wind_speed_kmh."
+    },
+    {
+      "id": "Q06",
+      "name": "idempotent_replay_zero_duplicates",
+      "description": "Re-ingesting an identical batch produces zero duplicate rows and preserves existing primary keys."
+    },
+    {
+      "id": "Q07",
+      "name": "zero_temporal_leakage",
+      "description": "Forecast issued_at::date <= valid_date; ML feature matrix uses strictly past observations (obs_date < issued_at::date)."
+    },
+    {
+      "id": "Q08",
+      "name": "ml_cohort_completeness",
+      "description": "At least 95% of the 32 Mexican state capital cohort has paired forecast and ERA5 ground-truth coverage for training."
+    }
+  ]
+}
